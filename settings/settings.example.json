@@ -1,0 +1,165 @@
+{
+  "cleanupPeriodDays": 365,
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "<SECRET: valore nel gestore, mai qui>",
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "API_TIMEOUT_MS": "3000000",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5.3-flash",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.2",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
+    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1000000",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "128000"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(ls:*)",
+      "Bash(test:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm build:schema:*)",
+      "Bash(pnpm build:prompt-engine:*)",
+      "Bash(psql:*)",
+      "Bash(pnpm test:ci:*)",
+      "Bash(TURBOPACK=0 pnpm build:*)",
+      "Bash(mkdir:*)",
+      "Bash(pnpm --filter @sitelab/schema build:*)",
+      "Bash(pnpm --filter @sitelab/prompt-engine build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm --filter @sitelab/backoffice build:*)",
+      "Bash(pnpm type-check:*)",
+      "Bash(find:*)",
+      "Bash(claude:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(brew uninstall:*)",
+      "Bash(node /Users/ppezz/.claude/plugins/cache/faigh-tools/auto-approve/*/scripts/ctl.js:*)"
+    ],
+    "deny": [],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git checkout:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git branch -d:*)",
+      "Bash(git switch:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr close:*)",
+      "Bash(gh pr ready:*)",
+      "Bash(gh pr review:*)",
+      "Bash(gh repo edit:*)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "model": "opus",
+  "hooks": {
+    "PreToolUse": [],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "terminal-notifier -message \"Claude Code Finished\" -sound default"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.claude/data/inter-session/inbox.py --hook stop"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "terminal-notifier -message \"Claude Code Needs Help\" -sound Basso"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.claude/data/inter-session/inbox.py --hook start"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "/opt/homebrew/bin/bun \"/Users/ppezz/.claude/scripts/glm-wrapper.ts\""
+  },
+  "enabledPlugins": {
+    "claude-hud@claude-hud": true,
+    "frontend-design@claude-code-plugins": false,
+    "pg@aiguide": false,
+    "glm-plan-usage@zai-coding-plugins": true,
+    "glm-plan-bug@zai-coding-plugins": true,
+    "openzeppelin-skills@openzeppelin-skills": false,
+    "warp@claude-code-warp": true,
+    "inter-session@inter-session": true,
+    "auto-approve@faigh-tools": true,
+    "cctop@cctop": true,
+    "interserver@interserver": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-workflows": {
+      "source": {
+        "source": "github",
+        "repo": "wshobson/agents"
+      }
+    },
+    "claude-code-warp": {
+      "source": {
+        "source": "github",
+        "repo": "warpdotdev/claude-code-warp"
+      }
+    },
+    "inter-session": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/yilunzhang/claude-code-inter-session.git"
+      }
+    },
+    "faigh-tools": {
+      "source": {
+        "source": "github",
+        "repo": "faighcv/claude-auto-approve"
+      }
+    },
+    "cctop": {
+      "source": {
+        "source": "github",
+        "repo": "st0012/cctop"
+      }
+    },
+    "interserver": {
+      "source": {
+        "source": "github",
+        "repo": "craftale-agency/interserver"
+      }
+    }
+  },
+  "alwaysThinkingEnabled": false,
+  "effortLevel": "medium",
+  "skipWorkflowUsageWarning": true,
+  "_comment": "Esempio sanificato: i secret sono placeholder. La statusLine e gli hook inbox sono il cuore del setup."
+}
