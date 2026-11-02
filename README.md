@@ -7,7 +7,7 @@ chiusura tab, HUD con quota GLM, e bus inter-session per la flotta di macchine.
 Warp (lavoro interattivo)          Mac (persistenza locale)
 ├─ cd progetto && claude  ────────► tmux server (demone, LaunchAgent al login)
 │   (funzione zsh trasparente)        ├─ a-<cartella>     agente 1
-│                                     ├─ a-<cartella>-2   agente 2 (parallelo)
+│                                     ├─ a-<cartella>-1   agente 2 (parallelo)
 │   chiudi il tab = detach            └─ continuum: auto-save 15' + auto-restore
 │                                     └─ reboot → panes ripartono con claude -c
 │
@@ -22,7 +22,7 @@ Warp (lavoro interattivo)          Mac (persistenza locale)
 2. **Andarsene**: chiudi il tab. L'agente continua dietro
 3. **Tornare**: `cd progetto && claude` — ti riattacca al TUO agente, contesto intatto
 
-Extra: secondo terminale sulla stessa cartella = secondo agente (`a-<dir>-2`),
+Extra: secondo terminale sulla stessa cartella = secondo agente (`a-<dir>-1`),
 automatico. Reboot del Mac: accendi, aspetti 10 secondi, regola 3.
 
 ## Componenti
