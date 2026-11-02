@@ -10,8 +10,9 @@ command -v bun  >/dev/null || brew install bun
 command -v tmux >/dev/null || brew install tmux
 
 # ─── 1. tmux persistence ───
-say "tmux config"
-cp tmux/tmux.conf ~/.tmux.conf
+say "tmux config (My-Tmux-conf via symlink)"
+[ -d ~/Desktop/Personal/My-Tmux-conf ] || git clone -q git@github.com:ppezzull/My-Tmux-conf.git ~/Desktop/Personal/My-Tmux-conf
+ln -sf ~/Desktop/Personal/My-Tmux-conf/.tmux.conf ~/.tmux.conf
 mkdir -p ~/.tmux/plugins
 [ -d ~/.tmux/plugins/tpm ]            || git clone -q https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 [ -d ~/.tmux/plugins/tmux-resurrect ] || git clone -q https://github.com/tmux-plugins/tmux-resurrect ~/.tmux/plugins/tmux-resurrect

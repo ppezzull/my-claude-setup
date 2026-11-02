@@ -29,7 +29,7 @@ automatico. Reboot del Mac: accendi, aspetti 10 secondi, regola 3.
 
 | Cartella | Cosa | Dettagli |
 |---|---|---|
-| `tmux/` | tmux.conf (continuum+resurrect, restore `claude -c`), boot script, LaunchAgent | [tmux/README](tmux/README.md) |
+| `tmux/` | tmux.conf → [My-Tmux-conf](https://github.com/ppezzull/My-Tmux-conf) (symlink), boot script, LaunchAgent | [tmux/README](tmux/README.md) |
 | `zsh/` | funzione `claude()` — la trasparenza multi-sessione | [zsh/README](zsh/README.md) |
 | `hud/` | wrapper [glm-claude-hud](https://github.com/ppezzull/glm-claude-hud) + fork [claude-hud](https://github.com/ppezzull/claude-hud) | [hud/README](hud/README.md) |
 | `bus/` | federazione inter-session ([craftale-agency/interserver](https://github.com/craftale-agency/interserver)) | [bus/README](bus/README.md) |

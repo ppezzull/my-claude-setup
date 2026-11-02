@@ -9,7 +9,7 @@ ogni pane riprende la conversazione.
 
 | File | Destinazione | Cosa fa |
 |---|---|---|
-| `tmux.conf` | `~/.tmux.conf` | dracula theme + resurrect/continuum + `@resurrect-processes ' ~claude->claude -c'` |
+| `tmux.conf` | `~/.tmux.conf` (→ **symlink** a [ppezzull/My-Tmux-conf](https://github.com/ppezzull/My-Tmux-conf), `git pull` = deploy) | dracula + resurrect/continuum + `@resurrect-processes ' ~claude->claude -c'`. Il file qui è copia di riferimento |
 | `tmux-agents-boot.sh` | `~/bin/` | avvia il server al login. **PATH esplicito**: launchd parte con ambiente minimale — senza, gli MCP (npx) muoiono dentro le sessioni |
 | `com.ppezz.tmux-agents.plist` | `~/Library/LaunchAgents/` | `RunAtLoad` → boot script |
 
