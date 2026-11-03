@@ -9,9 +9,15 @@ Il setup Claude Code personale di ppezz, versione documentata e installabile: ag
 ## Comandi
 
 ```bash
-./install.sh          # installa/aggiorna tutto (idempotente, rilanciabile)
-bash -n install.sh    # syntax check dell'installer dopo edit
+./install.sh [--minimal|--medium|--full]   # idempotente; default medium
+make minimal|medium|full|verify|update     # shortcut (verify = controlli funzionali)
+bash -n install.sh                          # syntax check dopo edit
 ```
+
+Tier: minimal = persistenza agenti; medium = +HUD; full = +bus. Piattaforme:
+macOS (LaunchAgent), Linux (systemd user unit, apt/dnf/pacman), Windows = WSL
+(l'installer nativo stampa la guida ed esce). Il boot script e' unico per OS:
+PATH unione mac+linux.
 
 Non ci sono build/test: la verifica è funzionale (vedi i README delle cartelle per i comandi di verify — `tmux ls`, `tmux show -gv @continuum-restore`, render di prova dell'HUD con echo-pipe a bun).
 

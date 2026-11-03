@@ -35,15 +35,29 @@ automatico. Reboot del Mac: accendi, aspetti 10 secondi, regola 3.
 | `bus/` | federazione inter-session ([craftale-agency/interserver](https://github.com/craftale-agency/interserver)) | [bus/README](bus/README.md) |
 | `settings/` | `settings.example.json` sanificato (env, hook, statusLine) | — |
 
-## Install (Mac nuovo)
+## Install
 
 ```bash
 git clone git@github.com:ppezzull/my-claude-setup.git ~/Desktop/Personal/my-claude-setup
-cd ~/Desktop/Personal/my-claude-setup && ./install.sh
+cd ~/Desktop/Personal/my-claude-setup
+./install.sh              # medium (default)
+# oppure: make minimal | make medium | make full | make verify | make update
 ```
+
+**Tier**:
+
+| Tier | Cosa installa |
+|---|---|
+| `--minimal` | persistenza agenti: tmux + plugin (continuum/resurrect) + boot service + funzione `claude()` |
+| `--medium` *(default)* | + HUD completo: wrapper symlink + fork renderer + statusLine |
+| `--full` | + bus inter-session: watchdog cron (setup spoke: `/interserver setup spoke --hub <ip>`) |
+
+**Piattaforme**: macOS (brew + LaunchAgent) · Linux (apt/dnf/pacman + systemd user unit) · Windows via WSL2 (l'installer nativo esce con la guida: tmux richiede POSIX).
 
 L'installer è idempotente: si può rilanciare. I secret NON sono nel repo —
 vedi `settings/settings.example.json` per i placeholder da riempire a mano.
+
+**`make update`** = `git pull` su tutti i repo dello stack (deploy immediato via symlink).
 
 ## Principi del setup
 

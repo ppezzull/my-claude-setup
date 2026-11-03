@@ -1,0 +1,11 @@
+[Unit]
+Description=tmux agents server boot (persistenza sessioni claude)
+WantedBy=default.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/tmux-agents-boot.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
