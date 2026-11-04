@@ -110,12 +110,27 @@ fi
 
 # ─── 3. bus inter-session [pieno] ───
 if [ "$TIER" = "full" ]; then
-  say "bus: watchdog cron (setup spoke completo: /interserver setup spoke --hub <ip>)"
+  say "bus: watchdog + cron (setup spoke completo: /interserver setup spoke --hub <ip>)"
+  # watchdog con seat name reale (sessione tmux / cwd Warp), vedi bus/README.md
+  BUSDIR="$HOME/.claude/data/inter-session"
+  mkdir -p "$BUSDIR"
+  if [ ! -f "$BUSDIR/watchdog.sh" ]; then
+    cp bus/watchdog.sh "$BUSDIR/watchdog.sh"
+    echo "    watchdog installato"
+  else
+    echo "    watchdog già presente (aggiornalo a mano dal repo se diverge)"
+  fi
   if ! crontab -l 2>/dev/null | grep -q watchdog.sh; then
     (crontab -l 2>/dev/null; echo '*/4 * * * * bash $HOME/.claude/data/inter-session/watchdog.sh >> $HOME/.inter-session/watchdog.log 2>&1') | crontab -
     echo "    cron aggiunto"
   else
     echo "    cron già presente"
+  fi
+  # auto-start plugin OFF: senza nome genererebbe seat-NNNNN anonimi;
+  # la connessione automatica la garantisce il watchdog (max 4 min), col nome reale
+  AUTOSTART=$(ls -d "$HOME"/.claude/plugins/cache/inter-session/inter-session/*/skills/inter-session/bin/auto_start.py 2>/dev/null | sort -V | tail -1)
+  if [ -n "$AUTOSTART" ]; then
+    python3 "$AUTOSTART" --off >/dev/null 2>&1 && echo "    plugin auto-start OFF (lazy)"
   fi
 fi
 
