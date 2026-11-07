@@ -1,7 +1,23 @@
 # my-claude-setup
 
-Il mio setup Claude Code completo: agenti persistenti che sopravvivono a reboot e
-chiusura tab, HUD con quota GLM, e bus inter-session per la flotta di macchine.
+Il mio setup Claude Code "che non muore mai": agenti che sopravvivono alla
+chiusura del tab e al riavvio del Mac, una statusline che mostra quanto
+contesto e quota mi restano, e un bus che fa parlare le sessioni Claude tra
+macchine diverse.
+
+> Scritto per me stesso del futuro e per chiunque voglia copiarlo.
+> Se una cosa qui dentro sembra ovvia: bene, deve esserlo.
+
+## Le 3 regole (l'unica parte da ricordare)
+
+1. **Partire** → `cd progetto && claude` — come sempre
+2. **Andarsene** → chiudi il tab. L'agente continua a vivere dietro
+3. **Tornare** → `cd progetto && claude` — ti riattacca al TUO agente, con tutto il contesto intatto
+
+Tutto il resto è automatico:
+
+- secondo terminale sulla stessa cartella → secondo agente (`a-<cartella>-1`)
+- riavvio del Mac → accendi, aspetti ~10 secondi, regola 3 (tmux resuscita le sessioni da solo)
 
 ```
 Warp (lavoro interattivo)          Mac (persistenza locale)
@@ -12,57 +28,63 @@ Warp (lavoro interattivo)          Mac (persistenza locale)
 │                                     └─ reboot → panes ripartono con claude -c
 │
 └─ HUD (statusline)                    Bus inter-session (hub su nebula :9473)
-    glm-wrapper.ts → claude-hud fork   ├─ maintenance (Mac)   ├─ nebula / pezserv
-    quota GLM + context sintetizzato   └─ crafthost          └─ deleghe via sync
+    glm-wrapper.ts → claude-hud fork   ├─ Mac (watchdog nomina i seat da tmux)
+    quota GLM + context sintetizzato   └─ nebula / crafthost, deleghe via sync
 ```
 
-## Le 3 regole d'uso (il 101)
+## Cosa serve
 
-1. **Partire**: `cd progetto && claude` — come sempre
-2. **Andarsene**: chiudi il tab. L'agente continua dietro
-3. **Tornare**: `cd progetto && claude` — ti riattacca al TUO agente, contesto intatto
+- macOS o Linux (Windows: passare da WSL2)
+- Claude Code installato
+- Per il tier full: più macchine nello stesso tailnet (Tailscale)
 
-Extra: secondo terminale sulla stessa cartella = secondo agente (`a-<dir>-1`),
-automatico. Reboot del Mac: accendi, aspetti 10 secondi, regola 3.
+## Cosa c'è dentro
 
-## Componenti
-
-| Cartella | Cosa | Dettagli |
+| Cartella | Cosa fa | Dettagli |
 |---|---|---|
-| `tmux/` | tmux.conf → [My-Tmux-conf](https://github.com/ppezzull/My-Tmux-conf) (symlink), boot script, LaunchAgent | [tmux/README](tmux/README.md) |
-| `zsh/` | funzione `claude()` — la trasparenza multi-sessione | [zsh/README](zsh/README.md) |
-| `hud/` | wrapper [glm-claude-hud](https://github.com/ppezzull/glm-claude-hud) + fork [claude-hud](https://github.com/ppezzull/claude-hud) | [hud/README](hud/README.md) |
-| `bus/` | federazione inter-session ([craftale-agency/interserver](https://github.com/craftale-agency/interserver)) | [bus/README](bus/README.md) |
-| `settings/` | `settings.example.json` sanificato (env, hook, statusLine) | — |
+| `tmux/` | tiene in vita gli agenti: conf, boot script, LaunchAgent/systemd | [tmux/README](tmux/README.md) |
+| `zsh/` | la funzione `claude()` — fa sembrare tutto normale | [zsh/README](zsh/README.md) |
+| `hud/` | statusline: quota GLM + sintesi contesto | [hud/README](hud/README.md) |
+| `bus/` | le sessioni si parlano tra macchine | [bus/README](bus/README.md) |
+| `settings/` | `settings.example.json` con placeholder (mai secret veri) | — |
 
 ## Install
 
 ```bash
-git clone git@github.com:ppezzull/my-claude-setup.git ~/Desktop/Personal/my-claude-setup
-cd ~/Desktop/Personal/my-claude-setup
-./install.sh              # medium (default)
-# oppure: make minimal | make medium | make full | make verify | make update
+git clone git@github.com:ppezzull/my-claude-setup.git
+cd my-claude-setup
+./install.sh        # medium (default)
 ```
 
-**Tier**:
-
-| Tier | Cosa installa |
+| Tier | Cosa ottieni |
 |---|---|
-| `--minimal` | persistenza agenti: tmux + plugin (continuum/resurrect) + boot service + funzione `claude()` |
-| `--medium` *(default)* | + HUD completo: wrapper symlink + fork renderer + statusLine |
-| `--full` | + bus inter-session: watchdog cron (setup spoke: `/interserver setup spoke --hub <ip>`) |
+| `--minimal` | agenti persistenti (tmux + funzione `claude()`) |
+| `--medium` | + statusline HUD |
+| `--full` | + bus inter-session (poi: `/interserver setup spoke --hub <ip>`) |
 
-**Piattaforme**: macOS (brew + LaunchAgent) · Linux (apt/dnf/pacman + systemd user unit) · Windows via WSL2 (l'installer nativo esce con la guida: tmux richiede POSIX).
+L'installer è **idempotente**: rilanciarlo non rompe nulla.
+I secret non sono nel repo — si riempiono i placeholder a mano.
 
-L'installer è idempotente: si può rilanciare. I secret NON sono nel repo —
-vedi `settings/settings.example.json` per i placeholder da riempire a mano.
+Shortcut: `make minimal | medium | full | verify | update`
+(`update` = `git pull` su tutto lo stack; i symlink fanno il deploy da soli).
 
-**`make update`** = `git pull` su tutti i repo dello stack (deploy immediato via symlink).
+## Problemi noti (e la cura)
 
-## Principi del setup
+- **MCP "npx" morti dentro le sessioni tmux dopo il boot** → il boot script
+  parte con ambiente minimale: il PATH esplicito dentro `tmux-agents-boot.sh`
+  è quello che li tiene in vita. Non toglierlo.
+- **Dopo un reboot il bus non si riconnette da solo** → `/interserver doctor`
+  diagnostica e ripara (cancella il pidfile stale e rilancia la lane).
+- **Seat con nomi strani (`seat-12345`) sull'hub** → il watchdog nomina i seat
+  dalle sessioni tmux (`a-ppezz-2` → `ppezz-2`); se vedi nomi numerici, il
+  lookup tmux è fallito e ha usato il fallback. Ignora, o riarmo con il watchdog.
+- **Agente che non risponde dopo il riavvio** → dai a tmux 10 secondi per il
+  restore, poi regola 3.
 
-- **Stesso comando di sempre**: zero comandi tmux da ricordare, tutto incapsulato
-- **Spostamenti, mai cancellazioni**: ogni operazione loggata
-- **Secret solo come riferimento al gestore**, mai valori nei file
-- **Fork > upstream** quando l'upstream manca di funzioni (claude-hud rate_limits)
-- Il bus e l'HUD sono already-documentati nei rispettivi repo; qui la colla
+## Principi
+
+- Stesso comando di sempre: zero comandi tmux da ricordare
+- Spostamenti, mai cancellazioni: ogni operazione loggata
+- Secret solo come riferimento al gestore, mai valori nei file
+- Fork > upstream quando l'upstream manca di funzioni
+- Il bus e l'HUD vivono nei loro repo; qui c'è la colla
