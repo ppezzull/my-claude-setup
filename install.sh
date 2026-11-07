@@ -1,20 +1,30 @@
 #!/usr/bin/env bash
 # install.sh — setup Claude Code completo. macOS + Linux (WSL su Windows).
 # Tier: --minimal | --medium (default) | --full. Idempotente: rilanciabile.
+# Flavor: --anthropic (default, endpoint ufficiale) | --glm (piano GLM, wrapper quota).
+#          Senza flag: auto-detect dal settings.json esistente.
 set -euo pipefail
 cd "$(dirname "$0")"
 say(){ echo "==> $*"; }
 die(){ echo "ERRORE: $*" >&2; exit 1; }
 
-TIER="medium"
+TIER="medium"; FLAVOR=""
 for a in "$@"; do
   case "$a" in
     --minimal|--medium|--full) TIER="${a#--}" ;;
-    -h|--help) sed -n '2,3p' "$0"; exit 0 ;;
-    *) die "flag sconosciuto: $a (usi: --minimal --medium --full)" ;;
+    --anthropic|--glm) FLAVOR="${a#--}" ;;
+    -h|--help) sed -n '2,4p' "$0"; exit 0 ;;
+    *) die "flag sconosciuto: $a (usi: --minimal --medium --full --anthropic --glm)" ;;
   esac
 done
-say "tier: $TIER"
+# auto-detect flavor: se il settings esistente punta a z.ai e' un setup GLM
+if [ -z "$FLAVOR" ] && [ -f "$HOME/.claude/settings.json" ]; then
+  if grep -q "api.z.ai" "$HOME/.claude/settings.json" 2>/dev/null; then
+    FLAVOR="glm"; say "auto-detect: settings esistente punta a GLM -> flavor glm"
+  fi
+fi
+[ -n "$FLAVOR" ] || FLAVOR="anthropic"
+say "tier: $TIER · flavor: $FLAVOR"
 
 # ─── OS detection ───
 OS="unknown"; PKG=""
@@ -81,27 +91,43 @@ fi
 
 # ─── 2. HUD [medio] ───
 if [ "$TIER" != "minimal" ]; then
-  say "HUD: wrapper (symlink) + fork renderer"
-  mkdir -p ~/.claude/scripts ~/.claude/plugins/cache/claude-hud/claude-hud
-  [ -d "$HOME/Desktop/Personal/glm-claude-hud" ] || git clone -q https://github.com/ppezzull/glm-claude-hud.git "$HOME/Desktop/Personal/glm-claude-hud"
-  ln -sf "$HOME/Desktop/Personal/glm-claude-hud/glm-wrapper.ts" ~/.claude/scripts/glm-wrapper.ts
+  say "HUD (flavor: $FLAVOR)"
+  mkdir -p ~/.claude/plugins/cache/claude-hud/claude-hud
   [ -d ~/.claude/plugins/cache/claude-hud/claude-hud/0.1.0 ] || \
     git clone -q https://github.com/ppezzull/claude-hud ~/.claude/plugins/cache/claude-hud/claude-hud/0.1.0
+  # il renderer va compilato se la clone arriva senza dist/
+  HUD_RENDERER="$HOME/.claude/plugins/cache/claude-hud/claude-hud/0.1.0/dist/index.js"
+  if [ ! -f "$HUD_RENDERER" ]; then
+    say "build renderer claude-hud"
+    (cd ~/.claude/plugins/cache/claude-hud/claude-hud/0.1.0 && "$BUN" install --silent && "$BUN" run build)
+  fi
+
+  if [ "$FLAVOR" = "glm" ]; then
+    # wrapper GLM: quota del piano + contesto — solo per setup con endpoint GLM
+    say "GLM: wrapper quota (symlink)"
+    mkdir -p ~/.claude/scripts
+    [ -d "$HOME/Desktop/Personal/glm-claude-hud" ] || git clone -q https://github.com/ppezzull/glm-claude-hud.git "$HOME/Desktop/Personal/glm-claude-hud"
+    ln -sf "$HOME/Desktop/Personal/glm-claude-hud/glm-wrapper.ts" ~/.claude/scripts/glm-wrapper.ts
+    HUD_CMD="$BUN \"\$HOME/.claude/scripts/glm-wrapper.ts\""
+  else
+    # anthropic: endpoint ufficiale, niente wrapper — renderer diretto
+    say "anthropic: statusLine renderer diretto (niente wrapper GLM)"
+    HUD_CMD="$BUN \"$HUD_RENDERER\""
+  fi
 
   if [ -f ~/.claude/settings.json ]; then
     say "statusLine in ~/.claude/settings.json"
     if ! grep -q '"statusLine"' ~/.claude/settings.json 2>/dev/null; then
-      BUN="$BUN" python3 - << 'EOF'
+      HUD_CMD="$HUD_CMD" python3 - << 'EOF'
 import json, os
 p = os.path.expanduser('~/.claude/settings.json')
 d = json.load(open(p))
-d['statusLine'] = {"type": "command",
-  "command": os.environ['BUN'] + " \"$HOME/.claude/scripts/glm-wrapper.ts\""}
+d['statusLine'] = {"type": "command", "command": os.environ['HUD_CMD']}
 json.dump(d, open(p, 'w'), indent=2)
 EOF
       echo "    aggiunta"
     else
-      echo "    già presente — verifica punti a ~/.claude/scripts/glm-wrapper.ts"
+      echo "    già presente — verifica punti al flavor giusto (glm-wrapper.ts o dist/index.js)"
     fi
   else
     echo "    (~/.claude/settings.json assente: installa Claude Code prima, poi rilancia)"

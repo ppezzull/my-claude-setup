@@ -46,15 +46,17 @@ Warp (lavoro interattivo)          Mac (persistenza locale)
 | `zsh/` | la funzione `claude()` — fa sembrare tutto normale | [zsh/README](zsh/README.md) |
 | `hud/` | statusline: quota GLM + sintesi contesto | [hud/README](hud/README.md) |
 | `bus/` | le sessioni si parlano tra macchine | [bus/README](bus/README.md) |
-| `settings/` | `settings.example.json` con placeholder (mai secret veri) | — |
+| `settings/` | settings d'esempio per flavor `anthropic` e `glm` (mai secret veri) | — |
 
 ## Install
 
 ```bash
 git clone git@github.com:ppezzull/my-claude-setup.git
 cd my-claude-setup
-./install.sh        # medium (default)
+./install.sh        # medium + anthropic (default)
 ```
+
+**Tier** (quanto installare):
 
 | Tier | Cosa ottieni |
 |---|---|
@@ -62,8 +64,20 @@ cd my-claude-setup
 | `--medium` | + statusline HUD |
 | `--full` | + bus inter-session (poi: `/interserver setup spoke --hub <ip>`) |
 
+**Flavor** (con quale Claude):
+
+| Flavor | Endpoint | Statusline |
+|---|---|---|
+| `--anthropic` *(default)* | ufficiale Anthropic (login o API key) | renderer diretto, nessun wrapper |
+| `--glm` | piano GLM (z.ai) | wrapper con quota del piano |
+
+Senza flag, l'installer **auto-detecta**: se il tuo `~/.claude/settings.json`
+esistente punta a GLM, sceglie `glm`; altrimenti `anthropic`. Forzare:
+`./install.sh --glm` oppure `make medium ARGS=--glm`.
+
 L'installer è **idempotente**: rilanciarlo non rompe nulla.
-I secret non sono nel repo — si riempiono i placeholder a mano.
+I secret non sono nel repo — si riempiono i placeholder a mano
+(`settings/settings.example.anthropic.json` o `.glm.json` come riferimento).
 
 Shortcut: `make minimal | medium | full | verify | update`
 (`update` = `git pull` su tutto lo stack; i symlink fanno il deploy da soli).

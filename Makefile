@@ -9,16 +9,16 @@ help:
 
 ## minimal: solo persistenza agenti (tmux + funzione claude)
 minimal:
-	./install.sh --minimal
+	./install.sh --minimal $(ARGS)
 
 ## medium (default): persistenza + HUD
 medium: default
 default:
-	./install.sh --medium
+	./install.sh --medium $(ARGS)
 
 ## full: tutto, bus inter-session incluso
 full:
-	./install.sh --full
+	./install.sh --full $(ARGS)
 
 ## verify: controlli funzionali post-install
 verify:
