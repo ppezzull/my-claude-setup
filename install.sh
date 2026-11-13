@@ -89,6 +89,15 @@ else
   echo "    già presente"
 fi
 
+say "janitor agenti abbandonati (stop vero dopo 12h da tab chiuso)"
+mkdir -p ~/bin && cp agents/janitor.sh ~/bin/agent-janitor.sh && chmod +x ~/bin/agent-janitor.sh
+if ! crontab -l 2>/dev/null | grep -q agent-janitor; then
+  (crontab -l 2>/dev/null; echo '*/15 * * * * bash ~/bin/agent-janitor.sh') | crontab -
+  echo "    cron aggiunto"
+else
+  echo "    cron già presente"
+fi
+
 # ─── 2. HUD [medio] ───
 if [ "$TIER" != "minimal" ]; then
   say "HUD (flavor: $FLAVOR)"
