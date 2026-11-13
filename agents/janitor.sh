@@ -8,10 +8,14 @@
 IDLE_LIMIT=$((12 * 3600))
 NOW=$(date +%s)
 SESSDIR="$HOME/.claude/data/inter-session/clients"
+# Esonerate dal janitor: i brain persistenti vivono di messaggi bus e stanno
+# idle per design giorni senza tab aperto (craftbrain/pezbrain, 2026-11-13).
+EXEMPT="^a-obsidian-craftale-brain$|^a-obsidian-ppezz-brain$"
 
 for line in $(tmux list-sessions -F "#{session_name}|#{session_attached}|#{session_activity}|#{pane_pid}" 2>/dev/null); do
   IFS='|' read -r name attached act pane <<< "$line"
   case "$name" in a-*) ;; *) continue ;; esac          # solo agenti, non "main"
+  echo "$name" | grep -qE "$EXEMPT" && continue        # brain: mai stoppati
   [ "$attached" != "0" ] && continue                    # tab ancora aperto
   [ $((NOW - act)) -lt $IDLE_LIMIT ] && continue        # troppo recente
   # pane_pid = processo claude (la chiave del seat sul bus)
