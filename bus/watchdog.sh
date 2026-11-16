@@ -100,6 +100,12 @@ run_once() {
         name=$(python3 -c "import json;print(json.load(open('$f')).get('name',''))" 2>/dev/null)
       fi
       [ -n "$name" ] || name="seat-$pid"
+      # un monitor orfano col lock in mano bloccherebbe il respawn
+      # ("another monitor already running") e il seat resterebbe morto
+      local orph
+      for orph in $(lsof -t "$DATA/clients/$pid.lock" 2>/dev/null); do
+        kill "$orph" 2>/dev/null && say "KILL: orphan lock holder $orph for TUI $pid"
+      done
       rearm "$pid" "$name"
       armed=$((armed+1))
     fi
@@ -117,7 +123,16 @@ run_once() {
         reaped=$((reaped+1))
         say "REAP: stale seat client $cpid (TUI $tpid gone)"
       fi
-      rm -f "$f"
+      rm -f "$f" "$DATA/clients/$tpid.lock"
+    fi
+  done
+  # lock di TUI morti: innocui (flock si rilascia alla morte) ma si accumulano da settimane
+  for f in "$DATA"/clients/*.lock; do
+    [ -f "$f" ] || continue
+    local tpid=${f%.lock}; tpid=${tpid##*/}
+    if ! kill -0 "$tpid" 2>/dev/null; then
+      # niente .session = mai armato o gia' reaped: spazziamo via solo il lock
+      [ -f "$DATA/clients/$tpid.session" ] || rm -f "$f"
     fi
   done
   say "watchdog: $ok healthy, $armed re-armed, $reaped stale seat(s) reaped"
