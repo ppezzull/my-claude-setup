@@ -86,8 +86,33 @@ rearm() {  # $1 = claude pid, $2 = seat name
   say "REARM: claude pid $1 -> seat '$2' (monitor respawned)"
 }
 
+# --- lane keepalive (2026-11-18) --------------------------------------------
+# Regola di ppezz: seat vivo <=> agente aperto. Se la lane locale muore, tutti
+# i monitor restano scollegati finche' qualcuno non la riavvia a mano (successo
+# 2 volte in un giorno sul Mac). Attiva solo sulle spoke (file hub-endpoint):
+# l'hub nebula ha il suo restarter e non va toccato.
+lane_keepalive() {
+  [ -f "$DATA/hub-endpoint" ] || return 0
+  lsof -ti :9473 -sTCP:LISTEN >/dev/null 2>&1 && return 0
+  local hub; hub=$(cat "$DATA/hub-endpoint" 2>/dev/null)
+  [ -n "$hub" ] || return 0
+  nohup python3 "$DATA/bin/server.py" 127.0.0.1 9473 "$hub" 9473 \
+    >> "$LOGDIR/forwarder.log" 2>&1 & disown
+  sleep 1
+  local lp; lp=$(lsof -ti :9473 -sTCP:LISTEN | head -1)
+  if [ -n "$lp" ]; then
+    echo "$lp" > "$DATA/server.9473.pid"
+    printf '{"pid": %s, "host": "127.0.0.1", "port": 9473}\n' "$lp" \
+      > "$DATA/server.9473.pid.meta"
+    say "LANE: forwarder restarted -> hub $hub (pid $lp)"
+  else
+    say "LANE: restart FAILED (hub $hub)"
+  fi
+}
+
 run_once() {
   local armed=0 ok=0
+  lane_keepalive
   for pid in $(claude_pids); do
     if name=$(monitor_alive "$pid"); then
       ok=$((ok+1))
