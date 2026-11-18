@@ -110,9 +110,20 @@ lane_keepalive() {
     # listener presente: deve essere il NOSTRO forwarder. Uno squatter
     # (island hub rispawnato dal plugin) fa fallire l'identity check di
     # tutti i client = seat morti in silenzio (failure mode 2026-10-24).
-    ps -p "$lp" -o command= 2>/dev/null | grep -q "bin/server.py" && return 0
+    if ps -p "$lp" -o command= 2>/dev/null | grep -q "bin/server.py"; then
+      # forwarder giusto. Il suo upstream e' PER-CONNESSIONE (thread-per-conn):
+      # zero client locali = zero uplink e va bene cosi'. Stale solo se HA
+      # client locali ma nessun socket verso l'hub (crafthost 2026-11-18:
+      # i seat sembravano collegati e non lo erano).
+      local localcli uplink
+      localcli=$(netstat -an 2>/dev/null | grep ESTABLISHED | grep -c "127.0.0.1.9473")
+      uplink=$(netstat -an 2>/dev/null | grep ESTABLISHED | grep -c "${hub}.9473")
+      if [ "$uplink" -gt 0 ] || [ "$localcli" -eq 0 ]; then return 0; fi
+      say "LANE: stale ($localcli client locali, 0 uplink verso $hub) — restart"
+    else
+      say "LANE: squatter su :9473 (pid $lp, non era il forwarder) — kill"
+    fi
     kill "$lp" 2>/dev/null
-    say "LANE: squatter su :9473 killato (pid $lp, non era il forwarder)"
     sleep 1
   fi
   nohup python3 "$DATA/bin/server.py" 127.0.0.1 9473 "$hub" 9473 \
