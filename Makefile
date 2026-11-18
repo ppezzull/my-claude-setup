@@ -30,7 +30,8 @@ verify:
 	@echo "— boot service:"
 	@if [ "$$(uname -s)" = Darwin ]; then launchctl print "gui/$$(id -u)/com.ppezz.tmux-agents" 2>/dev/null | grep -m1 "state =" || echo "  MANCANTE"; else systemctl --user is-active tmux-agents.service 2>/dev/null || echo "  MANCANTE"; fi
 	@echo "— HUD render di prova:"
-	@echo '{"model":{"display_name":"test"}}' | "$$(command -v bun || echo $$HOME/.bun/bin/bun)" ~/.claude/scripts/glm-wrapper.ts 2>/dev/null | head -1 || echo "  RENDER FALLITO"
+	@CMD=$$(python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.claude/settings.json'))).get('statusLine',{}).get('command',''))" 2>/dev/null); \
+	if [ -n "$$CMD" ]; then echo '{"model":{"display_name":"test"}}' | eval "$$CMD" 2>/dev/null | head -1 || echo "  RENDER FALLITO"; else echo "  statusLine assente"; fi
 
 ## update: git pull su tutti i repo dello stack (deploy = symlink)
 update:

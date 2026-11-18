@@ -8,14 +8,16 @@ cd "$(dirname "$0")"
 say(){ echo "==> $*"; }
 die(){ echo "ERRORE: $*" >&2; exit 1; }
 
-TIER="medium"; FLAVOR=""
-for a in "$@"; do
-  case "$a" in
-    --minimal|--medium|--full) TIER="${a#--}" ;;
-    --anthropic|--glm) FLAVOR="${a#--}" ;;
+TIER="medium"; FLAVOR=""; HUBIP=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --minimal|--medium|--full) TIER="${1#--}" ;;
+    --anthropic|--glm) FLAVOR="${1#--}" ;;
+    --hub) HUBIP="${2:?--hub richiede un ip}"; shift ;;
     -h|--help) sed -n '2,4p' "$0"; exit 0 ;;
-    *) die "flag sconosciuto: $a (usi: --minimal --medium --full --anthropic --glm)" ;;
+    *) die "flag sconosciuto: $1 (usi: --minimal --medium --full --anthropic --glm --hub <ip>)" ;;
   esac
+  shift
 done
 # auto-detect flavor: se il settings esistente punta a z.ai e' un setup GLM
 if [ -z "$FLAVOR" ] && [ -f "$HOME/.claude/settings.json" ]; then
@@ -149,11 +151,22 @@ if [ "$TIER" = "full" ]; then
   # watchdog con seat name reale (sessione tmux / cwd Warp), vedi bus/README.md
   BUSDIR="$HOME/.claude/data/inter-session"
   mkdir -p "$BUSDIR"
-  if [ ! -f "$BUSDIR/watchdog.sh" ]; then
-    cp bus/watchdog.sh "$BUSDIR/watchdog.sh"
-    echo "    watchdog installato"
-  else
-    echo "    watchdog già presente (aggiornalo a mano dal repo se diverge)"
+  # il repo e' la fonte: aggiorna SEMPRE il watchdog installato (il vecchio
+  # "aggiornalo a mano" ha lasciato versioni stale in giro per la flotta per
+  # settimane). Backup della versione precedente solo se diversa.
+  if [ -f "$BUSDIR/watchdog.sh" ] && ! cmp -s bus/watchdog.sh "$BUSDIR/watchdog.sh"; then
+    cp "$BUSDIR/watchdog.sh" "$BUSDIR/watchdog.sh.old"
+    echo "    watchdog aggiornato (backup .old)"
+  fi
+  cp bus/watchdog.sh "$BUSDIR/watchdog.sh"
+  # marker della spoke per il lane keepalive del watchdog: senza questo file
+  # la lane morta NON viene riavviata (silenzioso). --hub <ip> al primo setup.
+  if [ -n "$HUBIP" ]; then
+    echo "$HUBIP" > "$BUSDIR/hub-endpoint"
+    echo "    hub-endpoint: $HUBIP"
+  elif [ ! -f "$BUSDIR/hub-endpoint" ]; then
+    echo "    NOTA: hub-endpoint assente — il lane keepalive resta inattivo."
+    echo "    Rilancia con --hub <ip> (es. 100.70.94.8) per attivarlo"
   fi
   if ! crontab -l 2>/dev/null | grep -q watchdog.sh; then
     (crontab -l 2>/dev/null; echo '*/4 * * * * bash $HOME/.claude/data/inter-session/watchdog.sh >> $HOME/.inter-session/watchdog.log 2>&1') | crontab -

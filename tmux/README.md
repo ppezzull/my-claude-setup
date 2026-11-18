@@ -26,6 +26,7 @@ command -v npx && echo "MCP ok"          # PATH buono
 
 - `tmux new -A -s nome` = "attacca se esiste, altrimenti crea" — cuore di tutto
 - Save/restore manuali: `prefix C-s` / `prefix C-r`
-- I salvataggi vivono in `~/.tmux/resurrect/`
+- I salvataggi vivono in `~/.local/share/tmux/resurrect/` (XDG, tmux >= 3.2;
+  su versioni vecchie `~/.tmux/resurrect/`)
 - Se una sessione resta "appesa" dopo restore: `tmux kill-session -t <nome>` e
   ricrea — il contesto è nel transcript, `claude -c` lo riprende

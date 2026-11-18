@@ -29,7 +29,7 @@ La catena di persistenza, dall'alto in basso:
 2. **`tmux/`** — il demone che tiene tutto in vita: `tmux.conf` (continuum auto-save 15' + auto-restore, `@resurrect-processes ' ~claude->claude -c'` per riprendere le conversazioni), `tmux-agents-boot.sh` (PATH esplicito — launchd parte con ambiente minimale e senza questo gli MCP npx muoiono dentro le sessioni), la plist RunAtLoad.
 3. **`hud/`** — due repo esterni che collaborano: il wrapper [ppezzull/glm-claude-hud](https://github.com/ppezzull/glm-claude-hud) (quota GLM, sintesi context dal transcript, scala colori, seat name) deployato via **symlink** (`git pull` = deploy), e il fork [ppezzull/claude-hud](https://github.com/ppezzull/claude-hud) v0.1.0 clonato come versione nel cache del plugin (il wrapper sceglie la versione più alta → il fork batte l'upstream, che NON ha il supporto rate_limits della riga Usage).
 4. **`bus/`** — federazione inter-session; l'implementazione sta in [craftale-agency/interserver](https://github.com/craftale-agency/interserver), qui solo la specifica del Mac (spoke verso hub nebula :9473) e i failure mode verificati.
-5. **`settings/settings.example.json`** — sanificato: i secret sono placeholder, i valori veri non entrano MAI nel repo.
+5. **`settings/settings.example.{glm,anthropic}.json`** — sanificato: i secret sono placeholder, i valori veri non entrano MAI nel repo.
 
 ## Regole del repo
 

@@ -30,6 +30,16 @@ claude_pids() {
         if ($0 !~ /bg-|daemon|mcp|attach|helper|npm|node/) print $1
       }
     }'
+  # I brain girano come "node <path>/claude" (nome processo senza "claude"):
+  # l'awk sopra li salta e i loro seat non venivano MAI riarmati (2026-11-18).
+  # Catturiamo SOLO quelli: figlio diretto dello shell di un pane a-*, exe
+  # "node" e "claude" nel path del binario. Altri figli foreground (uv run,
+  # caffeinate, MCP manuali...) NON sono agenti e non prendono seat.
+  local panes=$(tmux list-panes -a -F '#{pane_pid} #{session_name}' 2>/dev/null | awk '$2 ~ /^a-/ {print $1}' | tr '\n' ' ')
+  [ -n "$panes" ] || return 0
+  ps -eo pid=,ppid=,command= | awk -v shells="$panes" '
+    BEGIN { n = split(shells, arr, " "); for (i=1;i<=n;i++) sh[arr[i]]=1 }
+    ($2 in sh) && ($3 == "node") && ($0 ~ /claude/) { print $1 }'
 }
 
 # --- seat name from the tmux session hosting this claude pid ----------------
@@ -93,13 +103,22 @@ rearm() {  # $1 = claude pid, $2 = seat name
 # l'hub nebula ha il suo restarter e non va toccato.
 lane_keepalive() {
   [ -f "$DATA/hub-endpoint" ] || return 0
-  lsof -ti :9473 -sTCP:LISTEN >/dev/null 2>&1 && return 0
   local hub; hub=$(cat "$DATA/hub-endpoint" 2>/dev/null)
   [ -n "$hub" ] || return 0
+  local lp; lp=$(lsof -ti :9473 -sTCP:LISTEN | head -1)
+  if [ -n "$lp" ]; then
+    # listener presente: deve essere il NOSTRO forwarder. Uno squatter
+    # (island hub rispawnato dal plugin) fa fallire l'identity check di
+    # tutti i client = seat morti in silenzio (failure mode 2026-10-24).
+    ps -p "$lp" -o command= 2>/dev/null | grep -q "bin/server.py" && return 0
+    kill "$lp" 2>/dev/null
+    say "LANE: squatter su :9473 killato (pid $lp, non era il forwarder)"
+    sleep 1
+  fi
   nohup python3 "$DATA/bin/server.py" 127.0.0.1 9473 "$hub" 9473 \
     >> "$LOGDIR/forwarder.log" 2>&1 & disown
   sleep 1
-  local lp; lp=$(lsof -ti :9473 -sTCP:LISTEN | head -1)
+  lp=$(lsof -ti :9473 -sTCP:LISTEN | head -1)
   if [ -n "$lp" ]; then
     echo "$lp" > "$DATA/server.9473.pid"
     printf '{"pid": %s, "host": "127.0.0.1", "port": 9473}\n' "$lp" \

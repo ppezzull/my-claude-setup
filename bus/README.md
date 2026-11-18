@@ -69,3 +69,19 @@ Hook in `~/.claude/settings.json` (già in `settings/settings.example.json`):
 
 Per setup completo di una macchina nuova: `/interserver setup spoke --hub <ip>`
 dal plugin interserver.
+
+## Lane keepalive (2026-11-18, `57bb83c`+)
+
+Il watchdog ora riavvia ANCHE la lane, prima di armare i seat: se il forwarder
+`127.0.0.1:9473` muore (o la porta viene presa da uno squatter — island hub
+rispawnato — che fallisce l'identity check di tutti i client), lo killa e
+rilancia `bin/server.py 127.0.0.1 9473 <hub> 9473` riscrivendo pidfile+meta.
+
+Attivo SOLO dove esiste il marker `~/.claude/data/inter-session/hub-endpoint`
+(contenente l'ip dell'hub, es. `100.70.94.8`): le spoke. L'hub (nebula) non lo
+ha e non va toccato — ha il suo restarter dedicato.
+
+Regola di ppezz (2026-11-18), vale per inter-session E interserver:
+**seat vivo ⟺ agente aperto.** Cron `*/4` del watchdog su TUTTE le macchine
+della flotta (Mac, crafthost, nebula): senza cron, i seat di quella macchina
+restano morti dopo ogni morte del monitor.
