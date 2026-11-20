@@ -12,6 +12,12 @@
 # Run it with `--loop <seconds>` to self-daemonize instead of scheduling.
 set -uo pipefail
 
+# cron parte con PATH minimale (/usr/bin:/bin): senza questo, tmux
+# (/opt/homebrew/bin) e lsof (/usr/sbin) risultano irrangiungibili ->
+# tmux_name() torna vuoto e i seat degradano a seat-<pid> anonimi,
+# lane_keepalive() non vede il forwarder ("LANE: restart FAILED").
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 DATA="$HOME/.claude/data/inter-session"
 BIN=$(ls -d "$HOME"/.claude/plugins/cache/inter-session/inter-session/*/skills/inter-session/bin 2>/dev/null | sort -V | tail -1)
 LOGDIR="$HOME/.inter-session"
@@ -19,7 +25,9 @@ mkdir -p "$LOGDIR"
 LOG="$LOGDIR/watchdog.log"
 LOOP=""
 
-say() { printf '%s %s\n' "$(date '+%F %T')" "$*" | tee -a "$LOG"; }
+# stdout only: il redirect del cron (>> watchdog.log) e' l'unico writer.
+# Prima tee -a LOG + redirect = ogni riga scritta due volte.
+say() { printf '%s %s\n' "$(date '+%F %T')" "$*"; }
 
 # --- find claude MAIN processes (exclude helpers/daemons) -------------------
 claude_pids() {
@@ -147,12 +155,14 @@ run_once() {
     if name=$(monitor_alive "$pid"); then
       ok=$((ok+1))
     else
-      # seat name: tmux session name, else Warp cwd, else previous, else seat-<pid>
-      local f="$DATA/clients/$pid.session" name
+      # seat name: tmux session name, else Warp cwd, else previous (never an
+      # anonymous seat-*), else seat-<pid> as last resort
+      local f="$DATA/clients/$pid.session" name prev
       name=$(tmux_name "$pid")
       [ -n "$name" ] || name=$(warp_name "$pid")
       if [ -z "$name" ] && [ -f "$f" ]; then
-        name=$(python3 -c "import json;print(json.load(open('$f')).get('name',''))" 2>/dev/null)
+        prev=$(python3 -c "import json;print(json.load(open('$f')).get('name',''))" 2>/dev/null)
+        case "$prev" in seat-*|"") ;; *) name="$prev" ;; esac
       fi
       [ -n "$name" ] || name="seat-$pid"
       # un monitor orfano col lock in mano bloccherebbe il respawn
