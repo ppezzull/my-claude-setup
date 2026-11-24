@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# claude-local — Claude Code sui modelli crafthost via litellm nebula (:4000, tailnet).
+# Mapping: opus=coder14b, sonnet=thinker14b, haiku=qwen3.5:9b-q4km (qwen3.5 131k).
+#
+# Programma standalone ( NON funzione zsh: gli env-prefix di un alias si
+# perdono nel wrap tmux della funzione claude() e la sessione ricade sul
+# config GLM principale — field-tested 2026-11-24).
+# La chiave si legge DENTRO il pane via ssh dallo store hub: mai in chiaro
+# nella command line tmux (visibile in ps) né in questo file.
+set -euo pipefail
+
+BIN="$HOME/.local/bin/claude"
+BASE="a-local-$(basename "$PWD")"
+KEY_PATH="/home/ppezz/.config/nebula-secrets/claude-local-mac-litellm-key"
+args=$(printf ' %q' "$@")
+
+cmd="key=\$(ssh -o ConnectTimeout=3 -o BatchMode=yes nebula cat '$KEY_PATH' 2>/dev/null)
+exec env CLAUDE_CONFIG_DIR='$HOME/.claude-local' \
+  ANTHROPIC_BASE_URL=http://100.70.94.8:4000 \
+  ANTHROPIC_AUTH_TOKEN=\"\$key\" \
+  ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-4-5 \
+  ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-5 \
+  ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-haiku-4-5 \
+  '$BIN'$args"
+
+if [ -n "${TMUX:-}" ]; then
+  # già dentro tmux: crea/riattacca detached e switcha — niente tmux nel tmux
+  tmux new -d -A -s "$BASE" -c "$PWD" "$cmd" && tmux switch-client -t "$BASE"
+else
+  tmux new -A -s "$BASE" -c "$PWD" "$cmd"
+fi
