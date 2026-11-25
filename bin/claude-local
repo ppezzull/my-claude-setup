@@ -10,16 +10,16 @@
 # Programma standalone ( NON funzione zsh: gli env-prefix di un alias si
 # perdono nel wrap tmux della funzione claude() e la sessione ricade sul
 # config GLM principale — field-tested 2026-11-24).
-# La chiave si legge DENTRO il pane via ssh dallo store hub: mai in chiaro
-# nella command line tmux (visibile in ps) né in questo file.
+# Il token del proxy vive nel portachiavi di macOS (voce "claude-local"): lo
+# script non dipende da nessun'altra macchina per avviarsi (2026-11-25, prima
+# veniva letto via ssh dallo store su nebula). Mai in chiaro in questo file.
 set -euo pipefail
 
 BIN="$HOME/.local/bin/claude"
 BASE="a-local-$(basename "$PWD")"
-KEY_PATH="/home/ppezz/.config/nebula-secrets/claude-local-proxy-combined-token"
 args=$(printf ' %q' "$@")
 
-cmd="key=\$(ssh -o ConnectTimeout=3 -o BatchMode=yes nebula cat '$KEY_PATH' 2>/dev/null)
+cmd="key=\$(security find-generic-password -s claude-local-proxy -a \"\$USER\" -w 2>/dev/null)
 exec env CLAUDE_CONFIG_DIR='$HOME/.claude-local' \
   ANTHROPIC_BASE_URL=https://openai.craftshost.com \
   ANTHROPIC_AUTH_TOKEN=\"\$key\" \
