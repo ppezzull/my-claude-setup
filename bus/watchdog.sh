@@ -86,6 +86,34 @@ warp_name() {  # $1 = claude pid -> echoes name, "" if not under Warp
   return 0
 }
 
+# --- seat manuali: job in background (`claude --bg-pty-host`) -----------------
+# "<job-id>=<nome-seat>", separati da spazi. claude_pids() scarta i processi
+# `bg-*`, quindi il client del job "maintenance" non veniva MAI riarmato: morto
+# il monitor, il seat restava morto finche' qualcuno non lo rilanciava a mano
+# (2026-11-24, 2 volte in un giorno). Il nome e' fisso qui perche' il session
+# file viene cancellato all'uscita del client (niente "previous name") e il
+# processo e' figlio del demone, non di un pane: tmux_name() e warp_name()
+# danno vuoto e il seat degraderebbe a "seat-<pid>" anonimo.
+# Il job id sta nel socket del command line (`.../pty/<job-id>.sock`): la riga
+# resta valida anche se il job viene rilanciato (cambia il pid, non il job id).
+BG_SEATS="f685d8d7=maintenance"
+bg_seat_pids() {  # -> pid dei job elencati in BG_SEATS
+  local seat
+  for seat in $BG_SEATS; do
+    ps -eo pid=,command= | awk -v sock="/pty/${seat%%=*}.sock" \
+      '/--bg-pty-host / && index($0, sock) {print $1}'
+  done
+}
+bg_seat_name() {  # $1 = pid -> nome configurato, "" se non e' un job elencato
+  local cmd seat
+  cmd=$(ps -p "$1" -o command= 2>/dev/null) || return 0
+  case "$cmd" in *"--bg-pty-host "*) ;; *) return 0 ;; esac
+  for seat in $BG_SEATS; do
+    case "$cmd" in *"/pty/${seat%%=*}.sock"*) printf '%s' "${seat#*=}"; return 0 ;; esac
+  done
+  return 0
+}
+
 # --- monitor health for a given claude pid ---------------------------------
 monitor_alive() {  # $1 = claude pid -> echoes "name" if healthy, "" otherwise
   local f="$DATA/clients/$1.session"
@@ -151,14 +179,15 @@ lane_keepalive() {
 run_once() {
   local armed=0 ok=0
   lane_keepalive
-  for pid in $(claude_pids); do
+  for pid in $(claude_pids) $(bg_seat_pids); do
     if name=$(monitor_alive "$pid"); then
       ok=$((ok+1))
     else
       # seat name: tmux session name, else Warp cwd, else previous (never an
       # anonymous seat-*), else seat-<pid> as last resort
       local f="$DATA/clients/$pid.session" name prev
-      name=$(tmux_name "$pid")
+      name=$(bg_seat_name "$pid")
+      [ -n "$name" ] || name=$(tmux_name "$pid")
       [ -n "$name" ] || name=$(warp_name "$pid")
       if [ -z "$name" ] && [ -f "$f" ]; then
         prev=$(python3 -c "import json;print(json.load(open('$f')).get('name',''))" 2>/dev/null)

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# claude-local — Claude Code sui modelli crafthost via litellm nebula (:4000, tailnet).
-# Mapping: opus=coder14b, sonnet=thinker14b, haiku=qwen3.5:9b-q4km (qwen3.5 131k).
+# claude-local — Claude Code sui modelli crafthost (RTX 3060) tramite il PROXY
+# langfuse (shim Anthropic /v1/messages + ANTHROPIC_MODEL_MAP), con tracing.
+# Mapping: opus=coder14b, sonnet=thinker14b, haiku=qwen3.5:9b-q4km.
+#
+# Perché il proxy e non litellm (2026-11-24): via litellm i modelli restituivano
+# le chiamate agli strumenti come testo (0 su 3 utilizzabili in Claude Code);
+# via proxy i tre modelli usano gli strumenti e ogni chiamata è tracciata.
 #
 # Programma standalone ( NON funzione zsh: gli env-prefix di un alias si
 # perdono nel wrap tmux della funzione claude() e la sessione ricade sul
@@ -11,12 +16,12 @@ set -euo pipefail
 
 BIN="$HOME/.local/bin/claude"
 BASE="a-local-$(basename "$PWD")"
-KEY_PATH="/home/ppezz/.config/nebula-secrets/claude-local-mac-litellm-key"
+KEY_PATH="/home/ppezz/.config/nebula-secrets/claude-local-proxy-combined-token"
 args=$(printf ' %q' "$@")
 
 cmd="key=\$(ssh -o ConnectTimeout=3 -o BatchMode=yes nebula cat '$KEY_PATH' 2>/dev/null)
 exec env CLAUDE_CONFIG_DIR='$HOME/.claude-local' \
-  ANTHROPIC_BASE_URL=http://100.70.94.8:4000 \
+  ANTHROPIC_BASE_URL=https://openai.craftshost.com \
   ANTHROPIC_AUTH_TOKEN=\"\$key\" \
   ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-4-5 \
   ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-5 \
@@ -24,8 +29,13 @@ exec env CLAUDE_CONFIG_DIR='$HOME/.claude-local' \
   '$BIN'$args"
 
 if [ -n "${TMUX:-}" ]; then
-  # già dentro tmux: crea/riattacca detached e switcha — niente tmux nel tmux
-  tmux new -d -A -s "$BASE" -c "$PWD" "$cmd" && tmux switch-client -t "$BASE"
+  # già dentro tmux: crea/riattacca detached e switcha — niente tmux nel tmux.
+  # -c "$TMUX_PANE": switcha SOLO il client del pane chiamante. Senza -c tmux
+  # sceglie un client qualsiasi, anche quello di un'altra sessione (2026-11-24).
+  tmux new -d -A -s "$BASE" -c "$PWD" "$cmd"
+  if [ -n "${TMUX_PANE:-}" ]; then
+    tmux switch-client -c "$TMUX_PANE" -t "$BASE"
+  fi
 else
   tmux new -A -s "$BASE" -c "$PWD" "$cmd"
 fi
