@@ -127,6 +127,20 @@ else
   echo "    (~/.claude/settings.json assente: installa Claude Code prima, poi rilancia)"
 fi
 
+# ─── 1c. plugin ponytail [minimo] ───
+# https://github.com/DietrichGebert/ponytail — solo il codice che serve
+# (già nel repo -> libreria standard -> piattaforma -> dipendenza installata
+# -> minimo). Skill, 3 hook e una banda sopra il prompt.
+say "plugin ponytail"
+# il binario, mai `command -v claude`: in zsh restituisce la funzione claude()
+CLAUDE_BIN="$HOME/.local/bin/claude"; [ -x "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude)"
+if "$CLAUDE_BIN" plugin list 2>/dev/null | grep -q 'ponytail@ponytail'; then
+  echo "    già installato"
+else
+  "$CLAUDE_BIN" plugin marketplace add DietrichGebert/ponytail
+  "$CLAUDE_BIN" plugin install ponytail@ponytail
+fi
+
 # ─── 2. HUD [medio] ───
 if [ "$TIER" != "minimal" ]; then
   say "HUD (flavor: $FLAVOR)"

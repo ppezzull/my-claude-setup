@@ -77,6 +77,9 @@ esistente punta a GLM, sceglie `glm`; altrimenti `anthropic`. Forzare:
 `./install.sh --glm` oppure `make medium ARGS=--glm`.
 
 L'installer è **idempotente**: rilanciarlo non rompe nulla.
+
+**Plugin installati**: [ponytail](https://github.com/DietrichGebert/ponytail)
+(scrive solo il codice che serve: `/ponytail lite|full|ultra|off` per il livello).
 I secret non sono nel repo — si riempiono i placeholder a mano
 (`settings/settings.example.anthropic.json` o `.glm.json` come riferimento).
 
