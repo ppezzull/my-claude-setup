@@ -35,6 +35,11 @@ claude_pids() {
     /[c]laude/ {
       # keep bare "claude", "claude -r", "claude --resume ..." (main TUI processes)
       if ($0 ~ /\/claude( |$)/ || $0 ~ /^[ ]*[0-9]+ claude( |$)/) {
+        # un client tmux (`tmux new -A -s a-x ... claude -r`) resta vivo mentre
+        # resta attaccato e porta "claude" nel comando: non e un TUI. Armava un
+        # seat fantasma che si prendeva il nome base di quello vero (2026-11-27).
+        # Nessun apostrofo in questo commento: siamo dentro awk con quote singole.
+        if ($0 ~ /^[ ]*[0-9]+ tmux( |$)/) next
         if ($0 !~ /bg-|daemon|mcp|attach|helper|npm|node/) print $1
       }
     }'
@@ -115,6 +120,23 @@ bg_seat_name() {  # $1 = pid -> nome configurato, "" se non e' un job elencato
 }
 
 # --- monitor health for a given claude pid ---------------------------------
+# --- un processo appena nato non e' un TUI ----------------------------------
+# Un processo con "claude" nel comando che vive pochi istanti (uno statusline, un
+# `claude --version`, un run headless) non e' una sessione: su nebula il watchdog
+# ne armava uno nuovo a ogni giro come seat-<pid> anonimo, poi lo faceva sparire
+# al giro dopo (2026-11-27). Una sessione vera dura: si arma solo quando il
+# processo ha almeno MIN_AGE secondi di vita.
+MIN_AGE=30
+young() {  # $1 = pid -> esce 0 se il processo ha meno di MIN_AGE secondi
+  local e d=0 h=0 m s
+  e=$(ps -o etime= -p "$1" 2>/dev/null | tr -d ' ') || return 1
+  case "$e" in *-*) d=${e%%-*}; e=${e#*-} ;; esac
+  case "$e" in *:*:*) h=${e%%:*}; e=${e#*:} ;; esac
+  m=${e%%:*}; s=${e##*:}; s=${s%%.*}  # macOS: "MM:SS.ss"
+  # 10# perche' "09" con lo zero davanti verrebbe letto come ottale
+  [ $((10#$d*86400 + 10#$h*3600 + 10#$m*60 + 10#$s)) -lt "$MIN_AGE" ]
+}
+
 monitor_alive() {  # $1 = claude pid -> echoes "name" if healthy, "" otherwise
   local f="$DATA/clients/$1.session"
   [ -f "$f" ] || return 1
@@ -209,6 +231,11 @@ run_once() {
     fi
   done
   for pid in $(claude_pids) $(bg_seat_pids); do
+    # morto tra lo snapshot di ps e adesso: un processo effimero (per esempio un
+    # `claude --version` lanciato da una statusline che si aggiorna proprio quando
+    # il reap chiude un listener). Armare un pid morto crea un seat fantasma.
+    kill -0 "$pid" 2>/dev/null || continue
+    young "$pid" && continue
     if name=$(monitor_alive "$pid"); then
       ok=$((ok+1))
     else
