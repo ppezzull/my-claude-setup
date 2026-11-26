@@ -101,10 +101,10 @@ else
 fi
 
 # ─── 1b. handoff [minimo] ───
-# transcript >= 15 MB -> Claude propone di salvare stato/pendenti/prossimi passi
-# in /tmp; al si dell'utente la sessione si azzera da sola e riparte dal file.
-# Vedi handoff/README.md
-say "handoff (proposta a 15 MB di transcript, poi clear e ripresa automatici)"
+# A richiesta ("usa l'handoff"): salva stato/pendenti/prossimi passi in /tmp e
+# la sessione si azzera da sola e riparte dal file. La proposta automatica e'
+# spenta (HANDOFF_MB=15000). Vedi handoff/README.md
+say "handoff (a richiesta, con clear e ripresa automatici)"
 mkdir -p ~/.claude/scripts ~/.claude/skills
 ln -sfn "$(pwd)/handoff/handoff.py" ~/.claude/scripts/handoff.py
 ln -sfn "$(pwd)/handoff/skill" ~/.claude/skills/handoff

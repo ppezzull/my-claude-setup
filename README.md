@@ -46,7 +46,7 @@ Warp (lavoro interattivo)          Mac (persistenza locale)
 | `zsh/` | la funzione `claude()` — fa sembrare tutto normale | [zsh/README](zsh/README.md) |
 | `hud/` | statusline: quota GLM + sintesi contesto | [hud/README](hud/README.md) |
 | `bus/` | le sessioni si parlano tra macchine | [bus/README](bus/README.md) |
-| `handoff/` | a 15 MB di transcript propone di salvare stato in /tmp; al tuo sì si azzera e riparte da lì da solo | [handoff/README](handoff/README.md) |
+| `handoff/` | a richiesta ("usa l'handoff") salva lo stato in /tmp, si azzera e riparte da lì da solo | [handoff/README](handoff/README.md) |
 | `settings/` | settings d'esempio per flavor `anthropic` e `glm` (mai secret veri) | — |
 
 ## Install

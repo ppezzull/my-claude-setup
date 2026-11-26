@@ -7,14 +7,17 @@ from /tmp". Ora l'unica cosa da fare è dire sì.
 
 ## Come funziona
 
-1. Il transcript supera i 15 MB. A fine risposta Claude **chiede** se fare
-   l'handoff (una volta ogni 5 MB: a 15, a 20, a 25...).
-2. Dici di sì. Claude scrive `/tmp/<cartella>-handoff-<data>.md` con la skill
-   `handoff`: obiettivo, stato, pendenti, prossimi passi, file chiavi, decisioni.
-3. Alla fine della risposta la sessione fa da sola `/clear` e manda
+**A richiesta** (scelta del 26/11): chiedi "usa l'handoff" quando vuoi, ed è
+l'unico modo normale di avviarlo.
+
+1. Claude scrive `/tmp/<cartella>-handoff-<data>.md` con la skill `handoff`:
+   obiettivo, stato, pendenti, prossimi passi, file chiavi, decisioni.
+2. Alla fine della risposta la sessione fa da sola `/clear` e manda
    `continue from <file>`. Quella nuova carica il file e riparte da lì.
 
-Niente avviene senza il tuo sì. Se dici di no, la proposta torna 5 MB dopo.
+La **proposta automatica** esiste ma è spenta di default (`HANDOFF_MB=15000`):
+con una soglia raggiungibile (es. `HANDOFF_MB=15`) Claude propone da solo a
+fine risposta, una volta ogni `HANDOFF_STEP_MB` MB.
 
 Per salvare lo stato **senza** ripartire da capo: si scrive
 `/tmp/<cartella>-status-<data>.md`, che non avvia nulla.
@@ -30,13 +33,14 @@ L'installer li collega con symlink a `~/.claude/scripts/handoff.py` e
 `~/.claude/skills/handoff`, e aggiunge tre hook a `~/.claude/settings.json`
 (`UserPromptSubmit`, `Stop`, e `SessionStart` con matcher `clear`).
 
-Nel flavor GLM anche la misura MB nella HUD diventa rossa da 15 MB in su.
+Nel flavor GLM la misura MB nella HUD diventa rossa da 15 MB in su: indicatore
+visivo, indipendente dalla soglia di proposta.
 
 ## Regolare
 
 | Variabile | Default | Cosa cambia |
 |---|---|---|
-| `HANDOFF_MB` | `15` | da quanti MB di transcript propone |
+| `HANDOFF_MB` | `15000` | da quanti MB di transcript propone (default: mai, si chiede a mano) |
 | `HANDOFF_STEP_MB` | `5` | ogni quanti MB ripropone, se hai detto di no |
 | `HANDOFF_TTL_HOURS` | `24` | per quanto tempo un file è ancora caricato dopo `/clear` |
 

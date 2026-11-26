@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""handoff.py — propone un handoff quando il transcript di una sessione cresce.
+"""handoff.py — handoff di una sessione: salvataggio in /tmp, clear e ripresa.
 
-Il flusso, a proposta (mai senza il si dell'utente):
-  transcript >= HANDOFF_MB (15)  ->  a fine risposta Claude PROpone il handoff
-  l'utente dice si'              ->  Claude scrive /tmp/<cartella>-handoff-<data>.md (skill `handoff`)
-  fine del turno                 ->  la sessione si azzera da sola (/clear) e riparte dal file
+Il flusso, a richiesta (2026-11-26, scelta di ppezz: la proposta automatica non
+si fa piu' — si chiede l'handoff quando serve, "usa l'handoff"):
+  l'utente chiede l'handoff    ->  Claude scrive /tmp/<cartella>-handoff-<data>.md (skill `handoff`)
+  fine del turno               ->  la sessione si azzera da sola (/clear) e riparte dal file
 
-Solo dentro tmux: il clear e il "continue from <file>" sono tasti inviati al
-pane della sessione. Fuori da tmux il file resta salvato e tocca farlo a mano.
+HANDOFF_MB (default 15000, cioe' mai) resta la soglia di proposta automatica
+per chi la vuole: transcript >= HANDOFF_MB -> Claude propone, una volta ogni
+HANDOFF_STEP_MB.
 
 Hook:
   --hook prompt   UserPromptSubmit: una proposta ogni HANDOFF_STEP_MB (5) MB
@@ -24,7 +25,7 @@ import subprocess
 import sys
 import time
 
-THRESHOLD_MB = float(os.environ.get("HANDOFF_MB", "15"))
+THRESHOLD_MB = float(os.environ.get("HANDOFF_MB", "15000"))
 STEP_MB = float(os.environ.get("HANDOFF_STEP_MB", "5"))
 TTL_HOURS = float(os.environ.get("HANDOFF_TTL_HOURS", "24"))
 STATE_DIR = "/tmp/claude-handoff-state"
