@@ -85,3 +85,17 @@ Regola di ppezz (2026-11-18), vale per inter-session E interserver:
 **seat vivo ⟺ agente aperto.** Cron `*/4` del watchdog su TUTTE le macchine
 della flotta (Mac, crafthost, nebula): senza cron, i seat di quella macchina
 restano morti dopo ogni morte del monitor.
+
+## Alert quota GLM (2026-11-26, `quota-alert.py`)
+
+Cron `*/15` **solo su nebula** (`~/.claude/data/inter-session/quota-alert.py`,
+copia di `bus/quota-alert.py`): legge `/api/monitor/usage/quota/limit` (non
+costa crediti) e manda un `status:` sul bus a `craftlead` quando una finestra
+supera 80/90/100%, un avviso per scalino. Il token viene da
+`~/.claude/settings.json`, mai stampato. Da cron non c'è un seat "nostro": il
+mittente è un seat vivo della macchina (job `maintenance` se c'è, altrimenti il
+primo sano). Test: `--dry-run`, `--force`.
+
+Perché una sola istanza: le chiavi Z.AI di Mac e nebula sono diverse ma stanno
+sullo **stesso piano** (risposta quota identica al millisecondo di reset), una
+seconda istanza raddoppierebbe solo gli avvisi. Nebula perché è sempre accesa.

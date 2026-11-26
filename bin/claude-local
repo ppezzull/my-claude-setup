@@ -10,12 +10,65 @@
 # Programma standalone ( NON funzione zsh: gli env-prefix di un alias si
 # perdono nel wrap tmux della funzione claude() e la sessione ricade sul
 # config GLM principale — field-tested 2026-11-24).
-# Il token del proxy vive nel portachiavi di macOS (voce "claude-local"): lo
-# script non dipende da nessun'altra macchina per avviarsi (2026-11-25, prima
+# Il token del proxy vive nel portachiavi di macOS (servizio "claude-local-proxy"):
+# lo script non dipende da nessun'altra macchina per avviarsi (2026-11-25, prima
 # veniva letto via ssh dallo store su nebula). Mai in chiaro in questo file.
+#
+# Stesso profilo di `claude` (2026-11-26, "like we have it here"): cambia solo
+# provider e modelli. A ogni avvio settings.json e settings.local.json di
+# ~/.claude-local sono rigenerati da quelli di ~/.claude (senza cio' che punta
+# al provider: token, base URL, modelli, finestra contesto) e gli MCP globali
+# sono ricopiati se diversi. CLAUDE.md, skills e plugins sono symlink a quelli
+# principali. Restano separati transcript, storico e auto-memoria (dipendono dal
+# modello). Stato precedente in ~/.claude-local/backups/minimal-20261126.
 set -euo pipefail
 
 BIN="$HOME/.local/bin/claude"
+CFG="$HOME/.claude-local"
+
+python3 - "$CFG" <<'PY' || exit 1
+import json, os, sys
+cfg = sys.argv[1]
+main = os.path.expanduser("~/.claude")
+DROP = {"CLAUDE_CODE_SUBAGENT_MODEL", "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+        "CLAUDE_CODE_MAX_CONTEXT_TOKENS", "CLAUDE_CODE_MAX_OUTPUT_TOKENS"}
+def write(path, data, mode):
+    with open(path + ".tmp", "w") as f: json.dump(data, f, indent=2); f.write("\n")
+    os.chmod(path + ".tmp", mode); os.replace(path + ".tmp", path)
+for name in ("settings.json", "settings.local.json"):
+    src, dst = os.path.join(main, name), os.path.join(cfg, name)
+    d = json.load(open(src))
+    if "env" in d:
+        d["env"] = {k: v for k, v in d["env"].items() if not k.startswith("ANTHROPIC_") and k not in DROP}
+    if "enabledPlugins" in d:  # i plugin del piano GLM interrogano Z.AI: qui non hanno senso
+        d["enabledPlugins"] = {k: v for k, v in d["enabledPlugins"].items() if not k.startswith("glm-plan")}
+    if os.path.exists(dst):  # il /model scelto in claude-local non si perde al riavvio
+        d["model"] = json.load(open(dst)).get("model", d.get("model"))
+    write(dst, d, os.stat(src).st_mode & 0o777)
+mcp = json.load(open(os.path.expanduser("~/.claude.json"))).get("mcpServers", {})
+state = os.path.join(cfg, ".claude.json")
+if os.path.exists(state):
+    d = json.load(open(state))
+    if d.get("mcpServers") != mcp:
+        d["mcpServers"] = mcp; write(state, d, 0o600)
+PY
+
+for d in CLAUDE.md skills plugins; do
+  [ -e "$CFG/$d" ] || ln -s "$HOME/.claude/$d" "$CFG/$d"
+done
+# claude-hud conta gli MCP in "<config dir>.json" (per ~/.claude coincide con
+# ~/.claude.json): con un config dir custom serve questo link, altrimenti la
+# riga dei conteggi non mostra gli MCP.
+[ -e "$CFG.json" ] || ln -s "$CFG/.claude.json" "$CFG.json"
+# Lanciato da $HOME, ~/.claude/settings.json (il config GLM principale) viene
+# letto come impostazioni di PROGETTO e sovrascrive gli env qui sotto: la
+# sessione chiedeva glm-5.4 al proxy e restava muta (2026-11-26). Si parte da
+# una cartella propria.
+WORK="$HOME/.claude-local/workspace"
+if [ "$PWD" = "$HOME" ]; then
+  mkdir -p "$WORK"
+  cd "$WORK"
+fi
 BASE="a-local-$(basename "$PWD")"
 args=$(printf ' %q' "$@")
 
@@ -26,6 +79,7 @@ exec env CLAUDE_CONFIG_DIR='$HOME/.claude-local' \
   ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-4-5 \
   ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-4-5 \
   ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-haiku-4-5 \
+  GLM_HUD_NO_USAGE=1 \
   '$BIN'$args"
 
 if [ -n "${TMUX:-}" ]; then

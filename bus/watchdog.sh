@@ -177,8 +177,37 @@ lane_keepalive() {
 }
 
 run_once() {
-  local armed=0 ok=0
+  local armed=0 ok=0 reaped=0
   lane_keepalive
+  # PRIMA il reap dei seat orfani, POI il rearm (2026-11-26). Nell'ordine
+  # inverso il client nuovo si presentava all'hub mentre quello della sessione
+  # precedente era ancora registrato con lo stesso nome, e l'hub lo suffissava
+  # (local-workspace-2, craftlead-2-2-2) a ogni riavvio di una sessione.
+  for f in "$DATA"/clients/*.session; do
+    [ -f "$f" ] || continue
+    local tpid cpid
+    tpid=$(basename "$f" .session)
+    cpid=$(python3 -c "import json;print(json.load(open('$f')).get('listener_pid',0))" 2>/dev/null)
+    [ "$cpid" = "0" ] && continue
+    if ! kill -0 "$tpid" 2>/dev/null; then
+      if kill -0 "$cpid" 2>/dev/null && kill "$cpid" 2>/dev/null; then
+        reaped=$((reaped+1))
+        say "REAP: stale seat client $cpid (TUI $tpid gone)"
+      fi
+      rm -f "$f" "$DATA/clients/$tpid.lock"
+    fi
+  done
+  # all'hub serve un istante per registrare la disconnessione e liberare il nome
+  [ "$reaped" -eq 0 ] || sleep 1
+  # lock di TUI morti: innocui (flock si rilascia alla morte) ma si accumulano da settimane
+  for f in "$DATA"/clients/*.lock; do
+    [ -f "$f" ] || continue
+    local tpid=${f%.lock}; tpid=${tpid##*/}
+    if ! kill -0 "$tpid" 2>/dev/null; then
+      # niente .session = mai armato o gia' reaped: spazziamo via solo il lock
+      [ -f "$DATA/clients/$tpid.session" ] || rm -f "$f"
+    fi
+  done
   for pid in $(claude_pids) $(bg_seat_pids); do
     if name=$(monitor_alive "$pid"); then
       ok=$((ok+1))
@@ -202,31 +231,6 @@ run_once() {
       done
       rearm "$pid" "$name"
       armed=$((armed+1))
-    fi
-  done
-  # reap monitors whose claude TUI no longer exists (session file is keyed by TUI pid)
-  local reaped=0
-  for f in "$DATA"/clients/*.session; do
-    [ -f "$f" ] || continue
-    local tpid cpid
-    tpid=$(basename "$f" .session)
-    cpid=$(python3 -c "import json;print(json.load(open('$f')).get('listener_pid',0))" 2>/dev/null)
-    [ "$cpid" = "0" ] && continue
-    if ! kill -0 "$tpid" 2>/dev/null; then
-      if kill -0 "$cpid" 2>/dev/null && kill "$cpid" 2>/dev/null; then
-        reaped=$((reaped+1))
-        say "REAP: stale seat client $cpid (TUI $tpid gone)"
-      fi
-      rm -f "$f" "$DATA/clients/$tpid.lock"
-    fi
-  done
-  # lock di TUI morti: innocui (flock si rilascia alla morte) ma si accumulano da settimane
-  for f in "$DATA"/clients/*.lock; do
-    [ -f "$f" ] || continue
-    local tpid=${f%.lock}; tpid=${tpid##*/}
-    if ! kill -0 "$tpid" 2>/dev/null; then
-      # niente .session = mai armato o gia' reaped: spazziamo via solo il lock
-      [ -f "$DATA/clients/$tpid.session" ] || rm -f "$f"
     fi
   done
   say "watchdog: $ok healthy, $armed re-armed, $reaped stale seat(s) reaped"
