@@ -101,33 +101,13 @@ else
 fi
 
 # ─── 1b. handoff [minimo] ───
-# A richiesta ("usa l'handoff"): salva stato/pendenti/prossimi passi in /tmp e
-# la sessione si azzera da sola e riparte dal file. La proposta automatica e'
-# spenta (HANDOFF_MB=15000). Vedi handoff/README.md
+# https://github.com/ppezzull/handoff — a richiesta ("usa l'handoff") salva lo
+# stato in /tmp, la sessione si azzera da sola e riparte dal file. Il repo della
+# skill porta il suo installer (hook in ~/.claude/settings.json + link della skill).
 say "handoff (a richiesta, con clear e ripresa automatici)"
-mkdir -p ~/.claude/scripts ~/.claude/skills
-ln -sfn "$(pwd)/handoff/handoff.py" ~/.claude/scripts/handoff.py
-ln -sfn "$(pwd)/handoff/skill" ~/.claude/skills/handoff
-if [ -f ~/.claude/settings.json ]; then
-  python3 - << 'EOF'
-import json, os
-p = os.path.expanduser('~/.claude/settings.json')
-d = json.load(open(p))
-hooks = d.setdefault('hooks', {})
-def add(event, matcher, cmd):
-    for h in hooks.setdefault(event, []):
-        if h.get('matcher', '') == matcher and any(x.get('command') == cmd for x in h.get('hooks', [])):
-            return
-    hooks[event].append({"matcher": matcher, "hooks": [{"type": "command", "command": cmd}]})
-add('UserPromptSubmit', '', 'python3 $HOME/.claude/scripts/handoff.py --hook prompt')
-add('Stop', '', 'python3 $HOME/.claude/scripts/handoff.py --hook stop')
-add('SessionStart', 'clear', 'python3 $HOME/.claude/scripts/handoff.py --hook start')
-json.dump(d, open(p, 'w'), indent=2)
-EOF
-  echo "    hook aggiunti"
-else
-  echo "    (~/.claude/settings.json assente: installa Claude Code prima, poi rilancia)"
-fi
+HANDOFF="$HOME/Desktop/Personal/handoff"
+[ -d "$HANDOFF" ] || git clone -q https://github.com/ppezzull/handoff.git "$HANDOFF"
+bash "$HANDOFF/skills/handoff/install.sh"
 
 # ─── 1c. plugin ponytail [minimo] ───
 # https://github.com/DietrichGebert/ponytail — solo il codice che serve
