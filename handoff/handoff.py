@@ -131,18 +131,19 @@ def on_prompt(data):
     state = read_state(session_id)
     state["prompt_at"] = time.time()
     step = int((mb - THRESHOLD_MB) // STEP_MB)  # 0 alla soglia, 1 a +5 MB, ...
-    propose = mb >= THRESHOLD_MB and not prompt.startswith("/") and state.get("step") != step
-    state["step"] = step if mb >= THRESHOLD_MB else state.get("step")
     try:
         write_state(session_id, state)
     except OSError:
         return
-    if propose:
+    # Il contesto torna a OGNI prompt sopra la soglia: se il modello salta la
+    # richiesta al primo giro (visto con glm-5.3-flash), la fa al successivo.
+    if mb >= THRESHOLD_MB and not prompt.startswith("/"):
         emit("UserPromptSubmit",
-             f"[handoff] This session's transcript is {mb:.1f} MB (handoff threshold {THRESHOLD_MB:g} MB). "
-             "PROPOSE a handoff, do not do it yet: end your reply with ONE line asking whether to save status, "
-             "pending tasks and next steps to /tmp, so the session can start over from that file. "
-             "Only if the user says yes: use the `handoff` skill to write the file.")
+             f"[handoff] This session's transcript is {mb:.1f} MB (handoff threshold {THRESHOLD_MB:g} MB), "
+             f"handoff step {step}. If you have not asked the user about a handoff at this step yet, end your "
+             "reply with ONE line asking whether to save status, pending tasks and next steps to /tmp, so the "
+             "session can start over from that file. If you already asked at this step and the answer was not "
+             "yes, do not ask again. Only if the user says yes: use the `handoff` skill to write the file.")
 
 
 def on_stop(data):
