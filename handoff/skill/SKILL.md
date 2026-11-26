@@ -26,7 +26,9 @@ Keep the file under about 80 lines, facts only, written for a reader with no
 context:
 
 1. **Goal**: what the user wants, in one or two sentences.
-2. **State**: what is done and verified, what is in progress.
+2. **State**: what is done and verified, what is in progress. If the user's
+   last message asked something the reply had not fully resolved, quote it
+   verbatim here: it is the first thing to pick up.
 3. **Pending**: open tasks, blocked items and why, who owns what if others are involved.
 4. **Next steps**: ordered, each one concrete enough to start without asking.
 5. **Key files and commands**: paths, branches, PRs, commands worth running again.
