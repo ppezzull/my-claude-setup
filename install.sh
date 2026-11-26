@@ -102,8 +102,9 @@ fi
 
 # ─── 1b. handoff [minimo] ───
 # transcript >= 15 MB -> Claude propone di salvare stato/pendenti/prossimi passi
-# in /tmp; dopo /clear la sessione nuova riparte da quel file. Vedi handoff/README.md
-say "handoff (proposta a 15 MB di transcript, resume dopo /clear)"
+# in /tmp; al si dell'utente la sessione si azzera da sola e riparte dal file.
+# Vedi handoff/README.md
+say "handoff (proposta a 15 MB di transcript, poi clear e ripresa automatici)"
 mkdir -p ~/.claude/scripts ~/.claude/skills
 ln -sfn "$(pwd)/handoff/handoff.py" ~/.claude/scripts/handoff.py
 ln -sfn "$(pwd)/handoff/skill" ~/.claude/skills/handoff
@@ -119,6 +120,7 @@ def add(event, matcher, cmd):
             return
     hooks[event].append({"matcher": matcher, "hooks": [{"type": "command", "command": cmd}]})
 add('UserPromptSubmit', '', 'python3 $HOME/.claude/scripts/handoff.py --hook prompt')
+add('Stop', '', 'python3 $HOME/.claude/scripts/handoff.py --hook stop')
 add('SessionStart', 'clear', 'python3 $HOME/.claude/scripts/handoff.py --hook start')
 json.dump(d, open(p, 'w'), indent=2)
 EOF

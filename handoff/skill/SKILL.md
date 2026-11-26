@@ -1,18 +1,29 @@
 ---
 name: handoff
-description: Save a session handoff to /tmp before /clear (status, pending tasks, next steps) and resume from it afterwards. Use when the user accepts a handoff proposal, asks to save status, pending tasks and next steps in a file in /tmp because the context got too long, or says to continue from /tmp.
+description: Save a session handoff to /tmp before /clear (status, pending tasks, next steps) and resume from it afterwards. Use when the user accepts a handoff proposal, asks to save status, pending tasks and next steps in a file in /tmp because the context got too long, or says to continue from /tmp or to save the current state.
 ---
 
-# Handoff: save the session, then resume after /clear
+# Handoff: save the session, start over from the file
 
 ## Write the handoff
 
 File: `/tmp/<folder>-handoff-<YYYY-MM-DD-HHMM>.md`, where `<folder>` is the name
-of the current working directory. Create it with the Write tool, then tell the
-user the path and that they can `/clear` now: the next session picks the file
-up by itself.
+of the current working directory. Create it with the Write tool.
 
-Keep it under about 80 lines, facts only, written for a reader with no context:
+Writing that file starts the handoff by itself: when your reply ends, the
+session runs `/clear` and sends `continue from <file>`. The next session loads
+the file and goes on from its next steps. So end your reply with one line:
+handoff saved in `<path>`, the session is starting over from it.
+
+Inside tmux only. Outside tmux (or if the session does not start over by
+itself) the user runs `/clear` and writes `continue from <path>`. If it did not
+start over and the user wants it now, write the file again: that starts it.
+
+To save the state **without** starting over, write
+`/tmp/<folder>-status-<YYYY-MM-DD-HHMM>.md` instead and say so.
+
+Keep the file under about 80 lines, facts only, written for a reader with no
+context:
 
 1. **Goal**: what the user wants, in one or two sentences.
 2. **State**: what is done and verified, what is in progress.
